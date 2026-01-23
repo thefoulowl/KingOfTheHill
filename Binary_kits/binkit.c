@@ -61,7 +61,7 @@ void MaskTheName(char **argv) {
     strncpy(argv[0], MASKED_NAME, strlen(MASKED_NAME));
 
     // mount /proc/self to tmpfs
-    if (mount(TARGET_FILESYSTEM, TARGET_PROCESS, TARGET_FILESYSTEM, MOUNT_DATA) == 0) {
+    if (mount(TARGET_FILESYSTEM, TARGET_PROCESS, TARGET_FILESYSTEM, MOUNT_FLAG, MOUNT_DATA) == 0) {
         printf("Mount successful \n");
     } else {
         printf("error occurred while mounting tmpfs!\n");
