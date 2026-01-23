@@ -120,8 +120,8 @@ int main(int argc, char *argv[]){
     MaskIt(argv);
 
     // ignore soft kill signals
-    signal(SIGTERM, SIG_IGN);
-    signal(SIGHUP, SIG_IGN);
+    signal(SIGTERM, SIG_IGN);       // survive normal terminations like kill without -9
+    signal(SIGHUP, SIG_IGN);        // survive without any parent or anything attached
 
     // initial spawn
     SpawnThePartner();
@@ -129,8 +129,8 @@ int main(int argc, char *argv[]){
     // persistent loop
     while(1){
         // check if partner is alive
-        if(kill(b_pid, 0) == -1 && errno == ESRCH) SpawnThePartner();
-
+        if(kill(b_pid, 0) == -1 && errno == ESRCH) SpawnThePartner();       // flag 0 = send no signal
+        
         // koth
         GetTheHill();
 
