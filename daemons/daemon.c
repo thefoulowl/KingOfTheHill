@@ -1,3 +1,5 @@
+# Daemon made in C for the basic stuff for king of the hill games
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
