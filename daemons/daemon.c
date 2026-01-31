@@ -1,5 +1,3 @@
-# Daemon made in C for the basic stuff for king of the hill games
-
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,13 +14,11 @@
 #include <linux/fs.h>
 #include <errno.h>
 #include <signal.h>
+#include <time.h>
 
 #define TARGET_PROCESS "[kworker/0:5]"
-#define FS_TYPE "tmpfs"
-#define MOUNT_FLAG 0
-#define MOUNT_DATA NULL
 #define TARGET_PATH "/root/king.txt"
-#define USER_NAME "username"
+#define USER_NAME "theuser"
 
 pid_t b_pid = -1;
 
@@ -118,8 +114,13 @@ void SpawnThePartner(){
 }
 
 void ZombieManager(int sig){
+    (void) sig;
     // no halt if no child exits, continue the loop
     while(waitpid(-1, NULL, WNOHANG) > 0);
+}
+
+void SetTheSignal() {
+    struct sigaction sa;
 }
 
 void Pivot2RAM(char **argv){
