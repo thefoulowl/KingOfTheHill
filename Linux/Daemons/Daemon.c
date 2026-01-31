@@ -1,3 +1,7 @@
+/*
+Daemon focused on Persistence and some Masking Techniques for King of the hill games
+*/
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
